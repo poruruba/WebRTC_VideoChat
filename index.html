@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src * data: gap: https://ssl.gstatic.com 'unsafe-eval' 'unsafe-inline'; style-src * 'unsafe-inline'; media-src *; img-src * data: content: blob:;">
+  <meta name="format-detection" content="telephone=no">
+  <meta name="msapplication-tap-highlight" content="no">
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="viewport" content="user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, width=device-width">
+
+  <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+  <script src="https://code.jquery.com/jquery-1.12.4.min.js" integrity="sha384-nvAa0+6Qg9clwYCGGPpDQLVpLNn0fRaROjHqs13t4Ggj3Ez50XnGQqc/r8MhnRDZ" crossorigin="anonymous"></script>
+  <!-- Latest compiled and minified CSS -->
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css" integrity="sha384-HSMxcRTRxnN+Bdg0JdbxYKrThecOKuH5zCYotlSAcp1+c8xmyTe9GYg1l9a69psu" crossorigin="anonymous">
+  <!-- Optional theme -->
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap-theme.min.css" integrity="sha384-6pzBo3FDv/PJ8r2KRkGHifhEocL+1X2rVCTTkUfGk7/0pbek5mMa1upzvWbrUbOZ" crossorigin="anonymous">
+  <!-- Latest compiled and minified JavaScript -->
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js" integrity="sha384-aJ21OjlMXNL5UyIl/XNwTMqvzeRMZH2w8c5cRVpzpU8Y5bApTppSuUkhZXN0VxHd" crossorigin="anonymous"></script>
+
+  <link rel="stylesheet" href="css/start.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/spinkit/2.0.1/spinkit.min.css" />
+  <script src="js/methods_bootstrap.js"></script>
+  <script src="js/components_bootstrap.js"></script>
+  <script src="js/components_utils.js"></script>
+  <script src="js/vue_utils.js"></script>
+  <script src="js/gql_utils.js"></script>
+
+  <script src="js/remoteconsole.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vconsole/dist/vconsole.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vue@2.x/dist/vue.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vuex@2.x/dist/vuex.min.js"></script>
+
+  <script src="https://cdn.jsdelivr.net/npm/js-cookie@2/src/js.cookie.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.7/dat.gui.min.js"></script>
+
+  <script src="https://sdk.amazonaws.com/js/aws-sdk-2.949.0.min.js"></script>
+  <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
+  <script src="https://unpkg.com/amazon-kinesis-video-streams-webrtc/dist/kvs-webrtc.min.js"></script>
+
+  <title>ビデオチャット</title>
+</head>
+<body>
+<!--
+    <div id="loader-background">
+      <div class="sk-plane sk-center"></div>
+    </div>
+-->
+    <div id="top" class="container-fluid">
+        <h1>ビデオチャット</h1>
+
+        <span class="pull-right">
+          <input type="checkbox" id="label_chk_mute" v-model="volume_mute"><label for="label_chk_mute">mute</label>
+          <button class="btn btn-default" v-on:click="dialog_open('#config_dialog')">設定</button>
+        </span>
+
+        <div class="form-inline">
+          <select class="form-control" v-model="viewer_select">
+            <option v-for="(item, index) in viewer_info_list" v-if="item.name != master.name && !item.selected" v-bind:valie="item">{{item.name}}</option>
+          </select>
+          <button class="btn btn-default" v-on:click="viewer_add">追加</button>
+        </div>
+        <br>
+
+        <div class="row">
+          <span v-bind:class="master.grid">
+            <div class="panel panel-primary">
+              <div class="panel-heading">
+                <div class="form-inline pull-right">
+                  <select class="form-control" v-model="master.grid" v-on:change="onResize">
+                    <option value="col-xs-12">12</option>
+                    <option value="col-xs-6">6</option>
+                    <option value="col-xs-4">4</option>
+                    <option value="col-xs-3">3</option>
+                    <option value="col-xs-2">2</option>
+                    <option value="col-xs-1">1</option>
+                  </select>
+                </div>
+                <h4>自分 : {{master.name}}</h4>
+              </div>
+              <div class="panel-body" id="div_camera_view">
+                <video id="camera-view" class="img-responsive" autoplay playsinline muted />
+              </div>
+              <div class="panel-footer">
+                <button class="btn btn-default pull-right" v-on:click="master_chat">チャット</button>
+                <button v-if="!signalingClient_master" class="btn btn-default" v-on:click="start_master">開始</button>
+                <button v-else class="btn btn-default" v-on:click="stop_master">停止</button>
+              </div>
+            </div>
+          </span>
+
+          <span v-bind:class="item.grid" v-for="(item, index) in viewer_info_list" v-if="item.name != master.name" v-show="item.selected">
+            <div class="panel panel-default">
+              <div class="panel-heading">
+                <div class="form-inline pull-right">
+                  <select class="form-control" v-model="item.grid" v-on:change="onResize">
+                    <option value="col-xs-12">12</option>
+                    <option value="col-xs-6">6</option>
+                    <option value="col-xs-4">4</option>
+                    <option value="col-xs-3">3</option>
+                    <option value="col-xs-2">2</option>
+                    <option value="col-xs-1">1</option>
+                  </select>
+                </div>
+                <h4>{{item.name}}</h4>
+              </div>
+              <div class="panel-body" v-bind:id="'div_remote_view_' + item.name">
+                <video v-bind:id="'remote-view-' + item.name" class="img-responsive" autoplay playsinline v-bind:muted="volume_mute" />
+              </div>
+              <div class="panel-footer">
+                <button class="btn btn-default pull-right" v-on:click="viewer_chat(item.name)">チャット</button>
+                <button class="btn btn-default" v-on:click="stop_viewer(item.name)">閉じる</button>
+              </div>
+            </div>
+          </span>
+        </div>
+
+        <div class="modal fade" id="config_dialog">
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <div class="modal-header"><h4 class="modal-title">名前の設定</h4></div>
+              <div class="modal-body">
+                <div class="form-inline">
+                  <label>name</label>
+                  <select class="form-control" v-model="input_name">
+                    <option v-for="(item, index) in viewer_name_list" v-bind:value="item">{{item}}</option>
+                  </select>
+                </div>
+                <label>AWS_ACCESSKEY_ID</label> <input type="text" class="form-control" v-model="AWS_ACCESSKEY_ID"><br>
+                <label>AWS_SECRET_ACCESSKEY</label> <input type="password" class="form-control" v-model="AWS_SECRET_ACCESSKEY"><br>
+              </div>
+              <div class="modal-footer">
+                <button v-if="master.name" class="btn btn-default" v-on:click="dialog_close('#config_dialog')">Cancel</button>
+                <button class="btn btn-default" v-on:click="change_input_name">OK</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+
+        <!-- for progress-dialog -->
+        <progress-dialog v-bind:title="progress_title"></progress-dialog>
+    </div>
+
+    <script src="js/webrtc_master.js"></script>
+    <script src="js/webrtc_client.js"></script>
+
+    <script src="js/store.js"></script>
+    <script src="js/start.js"></script>
+</body>
